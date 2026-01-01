@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <style>
+        /* OBS Native Dock Style with Twitch Accents */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #2b2b2b;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 12px;
+            font-size: 12px;
+            overflow-y: auto;
+        }
+
+        /* Custom Scrollbar for Webkit */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #2b2b2b;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #4d4d4d;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #606060;
+        }
+
+        h3 {
+            margin-top: 0;
+            margin-bottom: 12px;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #b0b0b0;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #3e3e3e;
+            padding-bottom: 8px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        input[type="text"] {
+            flex-grow: 1;
+            background-color: #1f1f1f;
+            border: 1px solid #3e3e3e;
+            color: #ffffff;
+            padding: 6px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #9146FF;
+            box-shadow: 0 0 0 1px #9146FF;
+        }
+
+        button {
+            background-color: #3e3e3e;
+            color: #ffffff;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        button:hover {
+            background-color: #505050;
+        }
+
+        button.add-btn {
+            background-color: #9146FF;
+            color: white;
+        }
+
+        button.add-btn:hover {
+            background-color: #772ce8;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        li {
+            background-color: #363636;
+            border: 1px solid transparent;
+            margin-bottom: 6px;
+            padding: 8px;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 8px;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+
+        li:hover {
+            background-color: #404040;
+            border-color: #4d4d4d;
+        }
+
+        .title-text {
+            width: 100%;
+            white-space: normal;
+            word-wrap: break-word;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #f0f0f0;
+            cursor: pointer;
+            user-select: text;
+        }
+
+        .actions {
+            display: flex;
+            gap: 6px;
+            width: 100%;
+        }
+
+        .copy-btn,
+        .del-btn {
+            flex: 1;
+            text-align: center;
+            padding: 5px 0;
+            font-size: 11px;
+            border-radius: 3px;
+        }
+
+        .copy-btn {
+            background-color: #2f2f2f;
+            border: 1px solid #4d4d4d;
+            color: #e0e0e0;
+        }
+
+        .copy-btn:hover {
+            background-color: #9146FF;
+            border-color: #9146FF;
+            color: white;
+        }
+
+        .del-btn {
+            background-color: #2f2f2f;
+            border: 1px solid #4d4d4d;
+            color: #ff6b6b;
+            max-width: 30px;
+            font-weight: bold;
+        }
+
+        .del-btn:hover {
+            background-color: #a83232;
+            border-color: #a83232;
+            color: white;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #9146FF;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-weight: 600;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 1000;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h3>Historial de Títulos</h3>
+
+    <div class="input-group">
+        <input type="text" id="newTitle" placeholder="Escribe un nuevo título...">
+        <button class="add-btn" onclick="addTitle()">Guardar</button>
+    </div>
+
+    <ul id="historyList">
+        <!-- Los items se generarán aquí -->
+    </ul>
+
+    <div id="toast" class="toast">¡Copiado!</div>
+
+    <script>
+        // Cargar historial al iniciar
+        document.addEventListener('DOMContentLoaded', loadHistory);
+
+        function loadHistory() {
+            const history = JSON.parse(localStorage.getItem('obs_title_history') || '[]');
+            const list = document.getElementById('historyList');
+            list.innerHTML = '';
+
+            history.forEach((title, index) => {
+                const li = document.createElement('li');
+                li.draggable = true; // Hacer arrastrable
+                li.ondragstart = (e) => {
+                    e.dataTransfer.setData("text/plain", title);
+                    e.dataTransfer.effectAllowed = "copy";
+                };
+
+                const span = document.createElement('span');
+                span.className = 'title-text';
+                span.textContent = title;
+                span.title = "Arrastra esto al campo de Título o haz click para copiar";
+                span.onclick = () => copyToClipboard(title);
+
+                const actions = document.createElement('div');
+                actions.className = 'actions';
+
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'copy-btn';
+                copyBtn.textContent = 'Copiar';
+                copyBtn.onclick = () => copyToClipboard(title);
+
+                const delBtn = document.createElement('button');
+                delBtn.className = 'del-btn';
+                delBtn.textContent = 'X';
+                delBtn.onclick = () => deleteTitle(index);
+
+                actions.appendChild(copyBtn);
+                actions.appendChild(delBtn);
+                li.appendChild(span);
+                li.appendChild(actions);
+                list.appendChild(li);
+            });
+        }
+
+        function addTitle() {
+            const input = document.getElementById('newTitle');
+            const title = input.value.trim();
+
+            if (title) {
+                const history = JSON.parse(localStorage.getItem('obs_title_history') || '[]');
+
+                // Evitar duplicados consecutivos y mover al principio si ya existe
+                const existingIndex = history.indexOf(title);
+                if (existingIndex > -1) {
+                    history.splice(existingIndex, 1);
+                }
+
+                history.unshift(title); // Añadir al principio
+
+                // Limitar a 10 items
+                if (history.length > 10) history.pop();
+
+                localStorage.setItem('obs_title_history', JSON.stringify(history));
+                input.value = '';
+                loadHistory();
+            }
+        }
+
+        function deleteTitle(index) {
+            const history = JSON.parse(localStorage.getItem('obs_title_history') || '[]');
+            history.splice(index, 1);
+            localStorage.setItem('obs_title_history', JSON.stringify(history));
+            loadHistory();
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast();
+            });
+        }
+
+        function showToast() {
+            const toast = document.getElementById('toast');
+            toast.style.opacity = '1';
+            setTimeout(() => {
+                toast.style.opacity = '0';
+            }, 2000);
+        }
+
+        // Permitir añadir con Enter
+        document.getElementById('newTitle').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                addTitle();
+            }
+        });
+    </script>
+</body>
+
+</html>
